@@ -1,4 +1,4 @@
-package gowooco
+package gowc
 
 import "time"
 

@@ -1,4 +1,4 @@
-package gowooco
+package gowc
 
 // ProductService allows you to create, view, update, and delete individual, or a batch, of products
 // https://woocommerce.github.io/woocommerce-rest-api-docs/#products
