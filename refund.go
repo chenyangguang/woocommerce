@@ -1,4 +1,4 @@
-package gowc
+package gowooco
 
 import (
 	"github.com/shopspring/decimal"
