@@ -1,8 +1,9 @@
 package gowooco
 
 import (
-	"github.com/shopspring/decimal"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 // OrderService is an interface for interfacing with the orders endpoints of woocommerce API
@@ -14,6 +15,15 @@ type OrderService interface {
 	Update()
 	Delete()
 	BatchUpdate()
+}
+
+// OrderServiceOp handles communication with the order related methods of WooCommerce'API
+type OrderServiceOp struct {
+	client *Client
+}
+
+// OrderListOption
+type OrderListOption struct {
 }
 
 // Order represents a WooCommerce Order
