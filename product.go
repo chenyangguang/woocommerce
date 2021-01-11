@@ -76,7 +76,8 @@ func extractPagination(linkHeader string) (*Pagination, error) {
 	for _, link := range strings.Split(linkHeader, ",") {
 		match := linkRegex.FindStringSubmatch(link)
 		// Make sure the link is not empty or invalid
-		if len(match) != 3 {
+		println("mm", len(match))
+		if len(match) != 4 {
 			// We expect 3 values:
 			// match[0] = full match
 			// match[1] is the URL and match[2] is either 'previous' or 'next', 'first', 'last'

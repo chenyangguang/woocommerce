@@ -20,7 +20,7 @@ import (
 const (
 	UserAgent            = "gowooco/1.0.0"
 	defaultHttpTimeout   = 10
-	defaultApiPathPrefix = "/wp-json/wc"
+	defaultApiPathPrefix = "/wp-json/wc/v3"
 	defaultVersion       = "v3"
 )
 
@@ -128,6 +128,7 @@ func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, er
 	for {
 		c.attempts++
 		resp, err = c.Client.Do(req)
+
 		c.logResponse(resp)
 		if err != nil {
 			return nil, err //http client errors, not api responses
@@ -135,6 +136,7 @@ func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, er
 
 		respErr := CheckResponseError(resp)
 		if respErr == nil {
+			println("break", respErr)
 			break // no errors, break out of the retry loop
 		}
 
@@ -346,16 +348,15 @@ func (c *Client) CreateAndDo(method, relPath string, data, options, resource int
 // createAndDoGetHeaders creates an executes a request while returning the response headers.
 func (c *Client) createAndDoGetHeaders(method, relPath string, data, options, resource interface{}) (http.Header, error) {
 	if strings.HasPrefix(relPath, "/") {
-		// make sure it's a relative path
 		relPath = strings.TrimLeft(relPath, "/")
 	}
 
 	relPath = path.Join(c.pathPrefix, relPath)
+	//println("relPath:", relPath)
 	req, err := c.NewRequest(method, relPath, data, options)
 	if err != nil {
 		return nil, err
 	}
-
 	return c.doGetHeaders(req, resource)
 }
 

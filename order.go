@@ -3,11 +3,10 @@ package gowooco
 import (
 	"fmt"
 	"net/http"
-	"time"
 )
 
 const (
-	orderBasePath      = "order"
+	ordersBasePath     = "orders"
 	OrdersBaseResource = "orders"
 )
 
@@ -15,7 +14,7 @@ const (
 // https://woocommerce.github.io/woocommerce-rest-api-docs/#orders
 type OrderService interface {
 	Create()
-	Get()
+	Get(orderId int64, options interface{}) (*Order, error)
 	List(options interface{}) ([]Order, error)
 	Update()
 	Delete()
@@ -69,10 +68,10 @@ type Order struct {
 	Version            string          `json:"version,omitempty"`
 	Status             string          `json:"status,omitempty"`
 	Currency           string          `json:"currency,omitempty"`
-	DateCreated        *time.Time      `json:"date_created,omitempty"`
-	DateCreatedGmt     *time.Time      `json:"date_created_gmt,omitempty"`
-	DateModified       *time.Time      `json:"date_modified,omitempty"`
-	DateModifiedGmt    *time.Time      `json:"date_modified_gmt,omitempty"`
+	DateCreated        string          `json:"date_created,omitempty"`
+	DateCreatedGmt     string          `json:"date_created_gmt,omitempty"`
+	DateModified       string          `json:"date_modified,omitempty"`
+	DateModifiedGmt    string          `json:"date_modified_gmt,omitempty"`
 	DiscountsTotal     string          `json:"discount_total,omitempty"`
 	DiscountsTax       string          `json:"discount_tax,omitempty"`
 	ShippingTotal      string          `json:"shipping_total,omitempty"`
@@ -90,10 +89,10 @@ type Order struct {
 	PaymentMethod      string          `json:"payment_method,omitempty"`
 	PaymentMethodTitle string          `json:"payment_method_title,omitempty"`
 	TransactionId      string          `json:"transaction_id,omitempty"`
-	DatePaid           time.Time       `json:"date_paid,omitempty"`
-	DatePaidGmt        time.Time       `json:"date_paid_gmt,omitempty"`
-	DateCompleted      time.Time       `json:"date_completed,omitempty"`
-	DateCompletedGmt   time.Time       `json:"date_completed_gmt,omitempty"`
+	DatePaid           string          `json:"date_paid,omitempty"`
+	DatePaidGmt        string          `json:"date_paid_gmt,omitempty"`
+	DateCompleted      string          `json:"date_completed,omitempty"`
+	DateCompletedGmt   string          `json:"date_completed_gmt,omitempty"`
 	CartHash           string          `json:"cart_hash,omitempty"`
 	MetaData           []MetaData      `json:"meta_data,omitempty"`
 	LineItems          []LineItem      `json:"line_items,omitempty"`
@@ -133,7 +132,7 @@ type LineItem struct {
 	Taxes       []TaxLine  `json:"taxes,omitempty"`
 	MetaData    []MetaData `json:"meta_data,omitempty"`
 	SKU         string     `json:"sku,omitempty"`
-	Price       string     `json:"price,omitempty"`
+	Price       int64      `json:"price,omitempty"`
 }
 
 type TaxLine struct {
@@ -189,6 +188,12 @@ type CouponLine struct {
 }
 
 func (o *OrderServiceOp) List(options interface{}) ([]Order, error) {
+	//path := fmt.Sprintf("%s", ordersBasePath)
+	//println(path)
+	//resource := make([]*Order, 0)
+	//err := o.client.Get(path, resource, options)
+	//return resource, err
+
 	orders, _, err := o.ListWithPagination(options)
 	if err != nil {
 		return nil, err
@@ -198,28 +203,34 @@ func (o *OrderServiceOp) List(options interface{}) ([]Order, error) {
 
 // ListWithPagination lists products and return pagination to retrieve next/previous results.
 func (o *OrderServiceOp) ListWithPagination(options interface{}) ([]Order, *Pagination, error) {
-	path := fmt.Sprintf("%s", orderBasePath)
-	resource := new(OrdersResource)
+	path := fmt.Sprintf("%s", ordersBasePath)
+	resource := make([]Order, 0)
 	headers := http.Header{}
-	headers, err := o.client.createAndDoGetHeaders("GET", path, nil, options, resource)
+	headers, err := o.client.createAndDoGetHeaders("GET", path, nil, options, &resource)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	// Extract pagination info from header
 	linkHeader := headers.Get("Link")
+	println(linkHeader)
+	//pagination, err := extractPagination(linkHeader)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
 
-	pagination, err := extractPagination(linkHeader)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return resource.Orders, pagination, nil
+	return resource, nil, nil
 }
 
 func (o *OrderServiceOp) Create() {}
 
-func (o *OrderServiceOp) Get() {}
+// Get individual order
+func (o *OrderServiceOp) Get(orderID int64, options interface{}) (*Order, error) {
+	path := fmt.Sprintf("%s/%d", ordersBasePath, orderID)
+	println(path)
+	resource := new(Order)
+	err := o.client.Get(path, resource, options)
+	return resource, err
+}
 
 func (o *OrderServiceOp) Update() {}
 

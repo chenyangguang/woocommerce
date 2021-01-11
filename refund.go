@@ -1,9 +1,5 @@
 package gowooco
 
-import (
-	"time"
-)
-
 // OrderRefundService allows you to create, view, and delete individual WooCommerce Order refunds.
 // https://woocommerce.github.io/woocommerce-rest-api-docs/#refunds
 type OrderRefundService interface {
@@ -18,8 +14,8 @@ type OrderRefundService interface {
 type OrderRefund struct {
 	ID int64 `json:"id,omitempty"`
 
-	DateCreated    *time.Time `json:"date_created,omitempty"`
-	DateCreatedGmt *time.Time `json:"date_created_gmt,omitempty"`
+	DateCreated    string `json:"date_created,omitempty"`
+	DateCreatedGmt string `json:"date_created_gmt,omitempty"`
 
 	Amount string `json:"amount,omitempty"`
 }
