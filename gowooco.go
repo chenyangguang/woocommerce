@@ -83,7 +83,7 @@ func NewClient(app App, shopName string, opts ...Options) *Client {
 			Timeout: time.Second * defaultHttpTimeout,
 		},
 		log:        &LeveledLogger{},
-		app:        App,
+		app:        app,
 		baseURL:    baseURL,
 		version:    defaultVersion,
 		pathPrefix: defaultApiPathPrefix,
@@ -100,7 +100,7 @@ func NewClient(app App, shopName string, opts ...Options) *Client {
 
 // ShopBaseURL return a shop's base https base url
 func ShopBaseURL(shopName string) string {
-	return fmt.Sprintf("https://%s", name)
+	return fmt.Sprintf("https://%s", shopName)
 }
 
 // Do sends an API request and populates the given interface with the parsed
@@ -275,4 +275,29 @@ func (c *Client) Put(path string, data, resource interface{}) error {
 // Delete performs a DELETE request for the given path
 func (c *Client) Delete(path string) error {
 	return c.CreateAndDo("DELETE", path, nil, nil, nil)
+}
+
+//  ListOption represent ist options that can be used for most collections of entities.
+type ListOption struct {
+	Context  string  `url:"context,omitemty"`
+	Page     int     `url:"page,omitemty"`
+	PerPagee int     `url:"per_page,omitemty"`
+	Search   string  `url:"search,omitemty"`
+	After    string  `url:"after,omitemty"`
+	Before   string  `url:"before,omitemty"`
+	Exclude  []int64 `url:"exclude,omitemty"`
+	Include  []int64 `url:"include,omitemty"`
+	Offset   int     `url:"offset,omitemty"`
+	Order    string  `url:"order,omitemty"`
+	Orderby  string  `url:"orderby,omitemty"`
+}
+
+// OrderResource  represents the result from the /wp-json/wc/v3/orders/:id endpoint
+type OrderResource struct {
+	Order *Order `json:"order"`
+}
+
+// OrderResource  represents the result from the /wp-json/wc/v3/orders endpoint
+type OrdersResource struct {
+	Orders []Order `json:"orders"`
 }

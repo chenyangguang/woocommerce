@@ -1,9 +1,16 @@
 package gowooco
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/shopspring/decimal"
+)
+
+const (
+	baseOrderPath      = "order"
+	baseOrdersResource = "orders"
 )
 
 // OrderService is an interface for interfacing with the orders endpoints of woocommerce API
@@ -22,8 +29,35 @@ type OrderServiceOp struct {
 	client *Client
 }
 
-// OrderListOption
+// OrderListOption list all thee order list option request params
+// refrence url:
+// https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-orders
+// parameters:
+// context	string	Scope under which the request is made; determines fields present in response. Options: view and edit. Default is view.
+// page	integer	Current page of the collection. Default is 1.
+// per_page	integer	Maximum number of items to be returned in result set. Default is 10.
+// search	string	Limit results to those matching a string.
+// after	string	Limit response to resources published after a given ISO8601 compliant date.
+// before	string	Limit response to resources published before a given ISO8601 compliant date.
+// exclude	array	Ensure result set excludes specific IDs.
+// include	array	Limit result set to specific ids.
+// offset	integer	Offset the result set by a specific number of items.
+// order	string	Order sort attribute ascending or descending. Options: asc and desc. Default is desc.
+// orderby	string	Sort collection by object attribute. Options: date, id, include, title and slug. Default is date.
+// parent	array	Limit result set to those of particular parent IDs.
+// parent_exclude	array	Limit result set to all items except those of a particular parent ID.
+// status	array	Limit result set to orders assigned a specific status. Options: any, pending, processing, on-hold, completed, cancelled, refunded, failed and trash. Default is any.
+// customer	integer	Limit result set to orders assigned a specific customer.
+// product	integer	Limit result set to orders assigned a specific product.
+// dp	integer	Number of decimal points to use in each resource. Default is 2.
 type OrderListOption struct {
+	ListOption
+	Parent        []int64  `url:"parent,omitemty"`
+	ParentExclude []int64  `url:"parent_exclude,omitemty"`
+	Status        []string `url:"status,omitempty"`
+	Customer      int64    `url:"customer,omitempty"`
+	Product       int64    `url:"product,omitempty"`
+	Dp            int      `url:"id,omitempty"`
 }
 
 // Order represents a WooCommerce Order
@@ -154,4 +188,23 @@ type CouponLine struct {
 	Discount    *decimal.Decimal `json:"discount,omitempty"`
 	DiscountTax *decimal.Decimal `json:"discount_tax,omitempty"`
 	MetaData    []MetaData       `json:"meta_data,omitempty"`
+}
+
+func (o *OrderServiceOp) List(option interface{}) ([]order, error) {
+	orders, _, err := s.ListWithPagination(options)
+	if err != nil {
+		return nil, err
+	}
+	return order, nil
+}
+
+func (o *OrderServiceOp) ListWithPagination(options interface{}) ([]order, error) {
+	path := fmt.Sprintf("%s", orderBasePath)
+	resource := new(OrderResource)
+	headers := http.Header{}
+	headers, err := o.client.createAndDoGetHeaders("GET", path, nil, options, resource)
+	if err != nil {
+		return nil, err
+	}
+	return resource.Orders, nil
 }
