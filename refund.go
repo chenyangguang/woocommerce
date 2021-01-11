@@ -1,7 +1,6 @@
 package gowooco
 
 import (
-	"github.com/shopspring/decimal"
 	"time"
 )
 
@@ -22,5 +21,5 @@ type OrderRefund struct {
 	DateCreated    *time.Time `json:"date_created,omitempty"`
 	DateCreatedGmt *time.Time `json:"date_created_gmt,omitempty"`
 
-	Amount *decimal.Decimal `json:"amount,omitempty"`
+	Amount string `json:"amount,omitempty"`
 }

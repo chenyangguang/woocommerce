@@ -23,3 +23,12 @@ type OrderNote struct {
 	CustomerNote string `json:"customer_note,omitempty"`
 	AddedByUser  bool   `json:"added_by_user,omitempty"`
 }
+
+type OrderNoteServiceOp struct {
+	client *Client
+}
+
+func (n *OrderNoteServiceOp) Create() {}
+func (n *OrderNoteServiceOp) Get()    {}
+func (n *OrderNoteServiceOp) List()   {}
+func (n *OrderNoteServiceOp) Delete() {}

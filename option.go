@@ -8,8 +8,8 @@ type Option func(c *Client)
 func WithVersion(apiVersion string) Option {
 	return func(c *Client) {
 		pathPrefix := defaultApiPathPrefix
-		if len(apiVersion) > 0 && (apiVersionRegex.Matching(apiVersion)) {
-			c.pathPrefix = fmt.Sprintf("%s/%d", defaultApiPathPrefix, apiVersion)
+		if len(apiVersion) > 0 && apiVersionRegex.MatchString(apiVersion) {
+			c.pathPrefix = fmt.Sprintf("%s/%s", defaultApiPathPrefix, apiVersion)
 		}
 		c.version = apiVersion
 		c.pathPrefix = pathPrefix

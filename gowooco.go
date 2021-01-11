@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-querystring/query"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,6 +18,7 @@ import (
 )
 
 const (
+	UserAgent            = "gowooco/1.0.0"
 	defaultHttpTimeout   = 10
 	defaultApiPathPrefix = "/wp-json/wc"
 	defaultVersion       = "v3"
@@ -56,29 +59,28 @@ type Client struct {
 	attempts int
 
 	RateLimits RateLimitInfo
-
-	Product   ProductService
-	Order     OrderService
-	OrderNote OrderNoteService
+	Product    ProductService
+	Order      OrderService
+	OrderNote  OrderNoteService
 }
 
 // NewClient returns a new WooCommerce API client with an already authenticated shopname and
 // token. The shopName parameter is the shop's wooCommerce website domain,
 // e.g. "shop.gitvim.com"
 // a.NewClient(shopName, token, opts) is equivalent to NewClient(a, shopName, token, opts)
-func (a App) NewClient(shopName string, opts ...Options) *Client {
+func (a App) NewClient(shopName string, opts ...Option) *Client {
 	return NewClient(a, shopName, opts...)
 }
 
 // NewClient Returns a new WooCommerce API client with an already authenticated shopname and
 // token. The shopName parameter is the shop's wooCommerce website domain,
 // e.g. "shop.gitvim.com"
-func NewClient(app App, shopName string, opts ...Options) *Client {
+func NewClient(app App, shopName string, opts ...Option) *Client {
 	baseURL, err := url.Parse(ShopBaseURL(shopName))
 	if err != nil {
 		panic(err)
 	}
-	c := Client{
+	c := &Client{
 		Client: &http.Client{
 			Timeout: time.Second * defaultHttpTimeout,
 		},
@@ -144,8 +146,6 @@ func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, er
 		}
 
 		if rateLimitErr, isRetryErr := respErr.(RateLimitError); isRetryErr {
-			// back off and retry
-
 			wait := time.Duration(rateLimitErr.RetryAfter) * time.Second
 			c.log.Debugf("rate limited waiting %s", wait.String())
 			time.Sleep(wait)
@@ -183,6 +183,92 @@ func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, er
 	return resp.Header, nil
 }
 
+// ResponseDecodingError occurs when the response body from WooCommerce could
+// not be parsed.
+type ResponseDecodingError struct {
+	Body    []byte
+	Message string
+	Status  int
+}
+
+func (e ResponseDecodingError) Error() string {
+	return e.Message
+}
+
+func CheckResponseError(r *http.Response) error {
+	if http.StatusOK <= r.StatusCode && r.StatusCode < http.StatusMultipleChoices {
+		return nil
+	}
+
+	// Create an anonoymous struct to parse the JSON data into.
+	GoWooCoError := struct {
+		Error  string      `json:"error"`
+		Errors interface{} `json:"errors"`
+	}{}
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+
+	// empty body, this probably means WooCommerce returned an error with no body
+	// we'll handle that error in wrapSpecificError()
+	if len(bodyBytes) > 0 {
+		err := json.Unmarshal(bodyBytes, &GoWooCoError)
+		if err != nil {
+			return ResponseDecodingError{
+				Body:    bodyBytes,
+				Message: err.Error(),
+				Status:  r.StatusCode,
+			}
+		}
+	}
+
+	// Create the response error from the Shopify error.
+	responseError := ResponseError{
+		Status:  r.StatusCode,
+		Message: GoWooCoError.Error,
+	}
+
+	// If the errors field is not filled out, we can return here.
+	if GoWooCoError.Errors == nil {
+		return wrapSpecificError(r, responseError)
+	}
+
+	switch reflect.TypeOf(GoWooCoError.Errors).Kind() {
+	case reflect.String:
+		// Single string, use as message
+		responseError.Message = GoWooCoError.Errors.(string)
+	case reflect.Slice:
+		// An array, parse each entry as a string and join them on the message
+		// json always serializes JSON arrays into []interface{}
+		for _, elem := range GoWooCoError.Errors.([]interface{}) {
+			responseError.Data = append(responseError.Data, fmt.Sprint(elem))
+		}
+		responseError.Message = strings.Join(responseError.Data, ", ")
+	case reflect.Map:
+		// A map, parse each error for each key in the map.
+		// json always serializes into map[string]interface{} for objects
+		for k, v := range GoWooCoError.Errors.(map[string]interface{}) {
+			// Check to make sure the interface is a slice
+			// json always serializes JSON arrays into []interface{}
+			if reflect.TypeOf(v).Kind() == reflect.Slice {
+				for _, elem := range v.([]interface{}) {
+					// If the primary message of the response error is not set, use
+					// any message.
+					if responseError.Message == "" {
+						responseError.Message = fmt.Sprintf("%v: %v", k, elem)
+					}
+					topicAndElem := fmt.Sprintf("%v: %v", k, elem)
+					responseError.Data = append(responseError.Data, topicAndElem)
+				}
+			}
+		}
+	}
+
+	return wrapSpecificError(r, responseError)
+}
+
 func (c *Client) logRequest(req *http.Request) {
 	if req == nil {
 		return
@@ -212,6 +298,26 @@ func (c *Client) logBody(body *io.ReadCloser, format string) {
 	*body = ioutil.NopCloser(bytes.NewBuffer(b))
 }
 
+// ResponseError is A general response error that follows a similar layout to WooCommerce's response
+// errors, i.e. either a single message or a list of messages.
+// https://woocommerce.github.io/woocommerce-rest-api-docs/#request-response-format
+type ResponseError struct {
+	Status  int
+	Message string
+	Data    []string
+}
+
+func (e ResponseError) Error() string {
+	return e.Message
+}
+
+// An error specific to a rate-limiting response. Embeds the ResponseError to
+// allow consumers to handle it the same was a normal ResponseError.
+type RateLimitError struct {
+	ResponseError
+	RetryAfter int
+}
+
 func wrapSpecificError(r *http.Response, err ResponseError) error {
 	if err.Status == http.StatusTooManyRequests {
 		f, _ := strconv.ParseFloat(r.Header.Get("Retry-After"), 64)
@@ -220,7 +326,6 @@ func wrapSpecificError(r *http.Response, err ResponseError) error {
 			RetryAfter:    int(f),
 		}
 	}
-
 	if err.Status == http.StatusNotAcceptable {
 		err.Message = http.StatusText(err.Status)
 	}
@@ -254,6 +359,56 @@ func (c *Client) createAndDoGetHeaders(method, relPath string, data, options, re
 	return c.doGetHeaders(req, resource)
 }
 
+// Creates an API request. A relative URL can be provided in urlStr, which will
+// be resolved to the BaseURL of the Client. Relative URLS should always be
+// specified without a preceding slash. If specified, the value pointed to by
+// body is JSON encoded and included as the request body.
+func (c *Client) NewRequest(method, relPath string, body, options interface{}) (*http.Request, error) {
+	rel, err := url.Parse(relPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Make the full url based on the relative path
+	u := c.baseURL.ResolveReference(rel)
+
+	// Add custom options
+	if options != nil {
+		optionsQuery, err := query.Values(options)
+		if err != nil {
+			return nil, err
+		}
+
+		for k, values := range u.Query() {
+			for _, v := range values {
+				optionsQuery.Add(k, v)
+			}
+		}
+		u.RawQuery = optionsQuery.Encode()
+	}
+
+	// A bit of JSON ceremony
+	var js []byte = nil
+
+	if body != nil {
+		js, err = json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(js))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("User-Agent", UserAgent)
+	req.SetBasicAuth(c.app.CustomerKey, c.app.CustomerSecret)
+	return req, nil
+}
+
 // Get performs a GET request for the given path and saves the result in the
 // given resource.
 func (c *Client) Get(path string, resource, options interface{}) error {
@@ -277,19 +432,19 @@ func (c *Client) Delete(path string) error {
 	return c.CreateAndDo("DELETE", path, nil, nil, nil)
 }
 
-//  ListOption represent ist options that can be used for most collections of entities.
-type ListOption struct {
-	Context  string  `url:"context,omitemty"`
-	Page     int     `url:"page,omitemty"`
-	PerPagee int     `url:"per_page,omitemty"`
-	Search   string  `url:"search,omitemty"`
-	After    string  `url:"after,omitemty"`
-	Before   string  `url:"before,omitemty"`
-	Exclude  []int64 `url:"exclude,omitemty"`
-	Include  []int64 `url:"include,omitemty"`
-	Offset   int     `url:"offset,omitemty"`
-	Order    string  `url:"order,omitemty"`
-	Orderby  string  `url:"orderby,omitemty"`
+//  ListOptions represent ist options that can be used for most collections of entities.
+type ListOptions struct {
+	Context string  `url:"context,omitemty"`
+	Page    int     `url:"page,omitemty"`
+	PerPage int     `url:"per_page,omitemty"`
+	Search  string  `url:"search,omitemty"`
+	After   string  `url:"after,omitemty"`
+	Before  string  `url:"before,omitemty"`
+	Exclude []int64 `url:"exclude,omitemty"`
+	Include []int64 `url:"include,omitemty"`
+	Offset  int     `url:"offset,omitemty"`
+	Order   string  `url:"order,omitemty"`
+	Orderby string  `url:"orderby,omitemty"`
 }
 
 // OrderResource  represents the result from the /wp-json/wc/v3/orders/:id endpoint

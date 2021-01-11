@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/shopspring/decimal"
 )
 
 const (
-	baseOrderPath      = "order"
-	baseOrdersResource = "orders"
+	orderBasePath      = "order"
+	OrdersBaseResource = "orders"
 )
 
 // OrderService is an interface for interfacing with the orders endpoints of woocommerce API
@@ -18,7 +16,7 @@ const (
 type OrderService interface {
 	Create()
 	Get()
-	List()
+	List(options interface{}) ([]Order, error)
 	Update()
 	Delete()
 	BatchUpdate()
@@ -51,7 +49,7 @@ type OrderServiceOp struct {
 // product	integer	Limit result set to orders assigned a specific product.
 // dp	integer	Number of decimal points to use in each resource. Default is 2.
 type OrderListOption struct {
-	ListOption
+	ListOptions
 	Parent        []int64  `url:"parent,omitemty"`
 	ParentExclude []int64  `url:"parent_exclude,omitemty"`
 	Status        []string `url:"status,omitempty"`
@@ -63,48 +61,48 @@ type OrderListOption struct {
 // Order represents a WooCommerce Order
 // https://woocommerce.github.io/woocommerce-rest-api-docs/#order-properties
 type Order struct {
-	ID                 int64            `json:"id,omitempty"`
-	ParentId           int64            `json:"parent_id,omitempty"`
-	Number             string           `json:"number,omitempty"`
-	OrderKey           string           `json:"order_key,omitempty"`
-	CreatedVia         string           `json:"created_via,omitempty"`
-	Version            string           `json:"version,omitempty"`
-	Status             string           `json:"status,omitempty"`
-	Currency           string           `json:"currency,omitempty"`
-	DateCreated        *time.Time       `json:"date_created,omitempty"`
-	DateCreatedGmt     *time.Time       `json:"date_created_gmt,omitempty"`
-	DateModified       *time.Time       `json:"date_modified,omitempty"`
-	DateModifiedGmt    *time.Time       `json:"date_modified_gmt,omitempty"`
-	DiscountsTotal     *decimal.Decimal `json:"discount_total,omitempty"`
-	DiscountsTax       *decimal.Decimal `json:"discount_tax,omitempty"`
-	ShippingTotal      *decimal.Decimal `json:"shipping_total,omitempty"`
-	ShippingTax        *decimal.Decimal `json:"shipping_tax,omitempty"`
-	CartTax            *decimal.Decimal `json:"cart_tax,omitempty"`
-	Total              *decimal.Decimal `json:"total,omitempty"`
-	TotalTax           *decimal.Decimal `json:"total_tax,omitempty"`
-	PricesIncludeTax   bool             `json:"prices_include_tax,omitempty"`
-	CustomerId         int64            `json:"customer_id,omitempty"`
-	CustomerIpAddress  string           `json:"customer_ip_address,omitempty"`
-	CustomerUserAgent  string           `json:"customer_user_agent,omitempty"`
-	CustomerNote       string           `json:"customer_note,omitempty"`
-	Billing            *Address         `json:"billing,omitempty"`
-	Shipping           *Address         `json:"shipping,omitempty"`
-	PaymentMethod      string           `json:"payment_method,omitempty"`
-	PaymentMethodTitle string           `json:"payment_method_title,omitempty"`
-	TransactionId      string           `json:"transaction_id,omitempty"`
-	DatePaid           time.Time        `json:"date_paid,omitempty"`
-	DatePaidGmt        time.Time        `json:"date_paid_gmt,omitempty"`
-	DateCompleted      time.Time        `json:"date_completed,omitempty"`
-	DateCompletedGmt   time.Time        `json:"date_completed_gmt,omitempty"`
-	CartHash           string           `json:"cart_hash,omitempty"`
-	MetaData           []MetaData       `json:"meta_data,omitempty"`
-	LineItems          []LineItem       `json:"line_items,omitempty"`
-	TaxLines           []TaxLine        `json:"tax_lines,omitempty"`
-	ShippingLines      []ShippingLines  `json:"shipping_lines,omitempty"`
-	FeeLines           []FeeLine        `json:"fee_lines,omitempty"`
-	CouponLines        []CouponLine     `json:"coupon_lines,omitempty"`
-	Refunds            []Refund         `json:"refunds,omitempty"`
-	SetPaid            bool             `json:"set_paid,omitempty"`
+	ID                 int64           `json:"id,omitempty"`
+	ParentId           int64           `json:"parent_id,omitempty"`
+	Number             string          `json:"number,omitempty"`
+	OrderKey           string          `json:"order_key,omitempty"`
+	CreatedVia         string          `json:"created_via,omitempty"`
+	Version            string          `json:"version,omitempty"`
+	Status             string          `json:"status,omitempty"`
+	Currency           string          `json:"currency,omitempty"`
+	DateCreated        *time.Time      `json:"date_created,omitempty"`
+	DateCreatedGmt     *time.Time      `json:"date_created_gmt,omitempty"`
+	DateModified       *time.Time      `json:"date_modified,omitempty"`
+	DateModifiedGmt    *time.Time      `json:"date_modified_gmt,omitempty"`
+	DiscountsTotal     string          `json:"discount_total,omitempty"`
+	DiscountsTax       string          `json:"discount_tax,omitempty"`
+	ShippingTotal      string          `json:"shipping_total,omitempty"`
+	ShippingTax        string          `json:"shipping_tax,omitempty"`
+	CartTax            string          `json:"cart_tax,omitempty"`
+	Total              string          `json:"total,omitempty"`
+	TotalTax           string          `json:"total_tax,omitempty"`
+	PricesIncludeTax   bool            `json:"prices_include_tax,omitempty"`
+	CustomerId         int64           `json:"customer_id,omitempty"`
+	CustomerIpAddress  string          `json:"customer_ip_address,omitempty"`
+	CustomerUserAgent  string          `json:"customer_user_agent,omitempty"`
+	CustomerNote       string          `json:"customer_note,omitempty"`
+	Billing            *Address        `json:"billing,omitempty"`
+	Shipping           *Address        `json:"shipping,omitempty"`
+	PaymentMethod      string          `json:"payment_method,omitempty"`
+	PaymentMethodTitle string          `json:"payment_method_title,omitempty"`
+	TransactionId      string          `json:"transaction_id,omitempty"`
+	DatePaid           time.Time       `json:"date_paid,omitempty"`
+	DatePaidGmt        time.Time       `json:"date_paid_gmt,omitempty"`
+	DateCompleted      time.Time       `json:"date_completed,omitempty"`
+	DateCompletedGmt   time.Time       `json:"date_completed_gmt,omitempty"`
+	CartHash           string          `json:"cart_hash,omitempty"`
+	MetaData           []MetaData      `json:"meta_data,omitempty"`
+	LineItems          []LineItem      `json:"line_items,omitempty"`
+	TaxLines           []TaxLine       `json:"tax_lines,omitempty"`
+	ShippingLines      []ShippingLines `json:"shipping_lines,omitempty"`
+	FeeLines           []FeeLine       `json:"fee_lines,omitempty"`
+	CouponLines        []CouponLine    `json:"coupon_lines,omitempty"`
+	Refunds            []Refund        `json:"refunds,omitempty"`
+	SetPaid            bool            `json:"set_paid,omitempty"`
 }
 
 type Address struct {
@@ -122,31 +120,31 @@ type Address struct {
 }
 
 type LineItem struct {
-	ID          int64            `json:"id,omitempty"`
-	Name        string           `json:"name,omitempty"`
-	ProductID   int64            `json:"product_id,omitempty"`
-	VariantID   int64            `json:"variant_id,omitempty"`
-	Quantity    int              `json:"quantity,omitempty"`
-	TaxClass    string           `json:"tax_class,omitempty"`
-	SubTotal    *decimal.Decimal `json:"subtotal,omitempty"`
-	SubtotalTax *decimal.Decimal `json:"subtotal_tax,omitempty"`
-	Total       *decimal.Decimal `json:"total,omitempty"`
-	TotalTax    *decimal.Decimal `json:"total_tax,omitempty"`
-	Taxes       []TaxLine        `json:"taxes,omitempty"`
-	MetaData    []MetaData       `json:"meta_data,omitempty"`
-	SKU         string           `json:"sku,omitempty"`
-	Price       *decimal.Decimal `json:"price,omitempty"`
+	ID          int64      `json:"id,omitempty"`
+	Name        string     `json:"name,omitempty"`
+	ProductID   int64      `json:"product_id,omitempty"`
+	VariantID   int64      `json:"variant_id,omitempty"`
+	Quantity    int        `json:"quantity,omitempty"`
+	TaxClass    string     `json:"tax_class,omitempty"`
+	SubTotal    string     `json:"subtotal,omitempty"`
+	SubtotalTax string     `json:"subtotal_tax,omitempty"`
+	Total       string     `json:"total,omitempty"`
+	TotalTax    string     `json:"total_tax,omitempty"`
+	Taxes       []TaxLine  `json:"taxes,omitempty"`
+	MetaData    []MetaData `json:"meta_data,omitempty"`
+	SKU         string     `json:"sku,omitempty"`
+	Price       string     `json:"price,omitempty"`
 }
 
 type TaxLine struct {
-	ID               int64            `json:"id,omitempty"`
-	RateCode         string           `json:"rate_code,omitempty"`
-	RateId           string           `json:"rate_id,omitempty"`
-	Label            string           `json:"label,omitempty"`
-	Compound         bool             `json:"compound,omitempty"`
-	TaxTotal         *decimal.Decimal `json:"tax_total"`
-	ShippingTaxTotal *decimal.Decimal `json:"shipping_tax_total,omitempty"`
-	MetaData         []MetaData       `json:"meta_data,omitempty"`
+	ID               int64      `json:"id,omitempty"`
+	RateCode         string     `json:"rate_code,omitempty"`
+	RateId           string     `json:"rate_id,omitempty"`
+	Label            string     `json:"label,omitempty"`
+	Compound         bool       `json:"compound,omitempty"`
+	TaxTotal         string     `json:"tax_total"`
+	ShippingTaxTotal string     `json:"shipping_tax_total,omitempty"`
+	MetaData         []MetaData `json:"meta_data,omitempty"`
 }
 
 type MetaData struct {
@@ -156,55 +154,74 @@ type MetaData struct {
 }
 
 type FeeLine struct {
-	ID        int64            `json:"id,omitempty"`
-	Name      string           `json:"name,omitempty"`
-	TaxClass  string           `json:"tax_class,omitempty"`
-	TaxStatus string           `json:"tax_status,omitempty"`
-	Total     *decimal.Decimal `json:"total,omitempty"`
-	TotalTax  *decimal.Decimal `json:"total_tax,omitempty"`
-	Taxes     []TaxLine        `json:"taxes,omitempty"`
-	MetaData  []MetaData       `json:"meta_data,omitempty"`
+	ID        int64      `json:"id,omitempty"`
+	Name      string     `json:"name,omitempty"`
+	TaxClass  string     `json:"tax_class,omitempty"`
+	TaxStatus string     `json:"tax_status,omitempty"`
+	Total     string     `json:"total,omitempty"`
+	TotalTax  string     `json:"total_tax,omitempty"`
+	Taxes     []TaxLine  `json:"taxes,omitempty"`
+	MetaData  []MetaData `json:"meta_data,omitempty"`
 }
 
 type Refund struct {
-	ID     int64            `json:"id,omitempty"`
-	Reason string           `json:"reason,omitempty"`
-	Total  *decimal.Decimal `json:"total,omitempty"`
+	ID     int64  `json:"id,omitempty"`
+	Reason string `json:"reason,omitempty"`
+	Total  string `json:"total,omitempty"`
 }
 
 type ShippingLines struct {
-	ID          int64            `json:"id,omitempty"`
-	MethodTitle string           `json:"method_title,omitempty"`
-	MethodID    string           `json:"method_id,omitempty"`
-	Total       *decimal.Decimal `json:"total,omitempty"`
-	TotalTax    *decimal.Decimal `json:"total_tax,omitempty"`
-	Taxes       []TaxLine        `json:"tax_lines,omitempty"`
-	MetaData    []MetaData       `json:"meta_data,omitempty"`
+	ID          int64      `json:"id,omitempty"`
+	MethodTitle string     `json:"method_title,omitempty"`
+	MethodID    string     `json:"method_id,omitempty"`
+	Total       string     `json:"total,omitempty"`
+	TotalTax    string     `json:"total_tax,omitempty"`
+	Taxes       []TaxLine  `json:"tax_lines,omitempty"`
+	MetaData    []MetaData `json:"meta_data,omitempty"`
 }
 
 type CouponLine struct {
-	ID          int64            `json:"id,omitempty"`
-	Code        string           `json:"code,omitempty"`
-	Discount    *decimal.Decimal `json:"discount,omitempty"`
-	DiscountTax *decimal.Decimal `json:"discount_tax,omitempty"`
-	MetaData    []MetaData       `json:"meta_data,omitempty"`
+	ID          int64      `json:"id,omitempty"`
+	Code        string     `json:"code,omitempty"`
+	Discount    string     `json:"discount,omitempty"`
+	DiscountTax string     `json:"discount_tax,omitempty"`
+	MetaData    []MetaData `json:"meta_data,omitempty"`
 }
 
-func (o *OrderServiceOp) List(option interface{}) ([]order, error) {
-	orders, _, err := s.ListWithPagination(options)
+func (o *OrderServiceOp) List(options interface{}) ([]Order, error) {
+	orders, _, err := o.ListWithPagination(options)
 	if err != nil {
 		return nil, err
 	}
-	return order, nil
+	return orders, nil
 }
 
-func (o *OrderServiceOp) ListWithPagination(options interface{}) ([]order, error) {
+// ListWithPagination lists products and return pagination to retrieve next/previous results.
+func (o *OrderServiceOp) ListWithPagination(options interface{}) ([]Order, *Pagination, error) {
 	path := fmt.Sprintf("%s", orderBasePath)
-	resource := new(OrderResource)
+	resource := new(OrdersResource)
 	headers := http.Header{}
 	headers, err := o.client.createAndDoGetHeaders("GET", path, nil, options, resource)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return resource.Orders, nil
+
+	// Extract pagination info from header
+	linkHeader := headers.Get("Link")
+
+	pagination, err := extractPagination(linkHeader)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return resource.Orders, pagination, nil
 }
+
+func (o *OrderServiceOp) Create() {}
+
+func (o *OrderServiceOp) Get() {}
+
+func (o *OrderServiceOp) Update() {}
+
+func (o *OrderServiceOp) Delete()      {}
+func (o *OrderServiceOp) BatchUpdate() {}
