@@ -1,4 +1,4 @@
-# gowooco 
+# go-commerce
 wooCommerce Go REST API Library
 
 [WooCommerce API Doc](https://woocommerce.github.io/woocommerce-rest-api-docs/#)
@@ -6,5 +6,5 @@ wooCommerce Go REST API Library
 ## Install
 
 ```console
- go get github.com/chenyangguang/gowooco
+ go get github.com/chenyangguang/go-woocommerce
 ```
