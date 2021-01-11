@@ -1,10 +1,17 @@
 package gowooco
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -94,4 +101,178 @@ func NewClient(app App, shopName string, opts ...Options) *Client {
 // ShopBaseURL return a shop's base https base url
 func ShopBaseURL(shopName string) string {
 	return fmt.Sprintf("https://%s", name)
+}
+
+// Do sends an API request and populates the given interface with the parsed
+// response. It does not make much sense to call Do without a prepared
+// interface instance.
+func (c *Client) Do(req *http.Request, v interface{}) error {
+	_, err := c.doGetHeaders(req, v)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// doGetHeaders executes a request, decoding the response into `v` and also returns any response headers.
+func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, error) {
+	var resp *http.Response
+	var err error
+	retries := c.retries
+	c.attempts = 0
+	c.logRequest(req)
+
+	for {
+		c.attempts++
+		resp, err = c.Client.Do(req)
+		c.logResponse(resp)
+		if err != nil {
+			return nil, err //http client errors, not api responses
+		}
+
+		respErr := CheckResponseError(resp)
+		if respErr == nil {
+			break // no errors, break out of the retry loop
+		}
+
+		// retry scenario, close resp and any continue will retry
+		resp.Body.Close()
+
+		if retries <= 1 {
+			return nil, respErr
+		}
+
+		if rateLimitErr, isRetryErr := respErr.(RateLimitError); isRetryErr {
+			// back off and retry
+
+			wait := time.Duration(rateLimitErr.RetryAfter) * time.Second
+			c.log.Debugf("rate limited waiting %s", wait.String())
+			time.Sleep(wait)
+			retries--
+			continue
+		}
+
+		var doRetry bool
+		switch resp.StatusCode {
+		case http.StatusServiceUnavailable:
+			c.log.Debugf("service unavailable, retrying")
+			doRetry = true
+			retries--
+		}
+
+		if doRetry {
+			continue
+		}
+
+		// no retry attempts, just return the err
+		return nil, respErr
+	}
+
+	c.logResponse(resp)
+	defer resp.Body.Close()
+
+	if v != nil {
+		decoder := json.NewDecoder(resp.Body)
+		err := decoder.Decode(&v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return resp.Header, nil
+}
+
+func (c *Client) logRequest(req *http.Request) {
+	if req == nil {
+		return
+	}
+	if req.URL != nil {
+		c.log.Debugf("%s: %s", req.Method, req.URL.String())
+	}
+	c.logBody(&req.Body, "SENT: %s")
+}
+
+func (c *Client) logResponse(res *http.Response) {
+	if res == nil {
+		return
+	}
+	c.log.Debugf("RECV %d: %s", res.StatusCode, res.Status)
+	c.logBody(&res.Body, "RESP: %s")
+}
+
+func (c *Client) logBody(body *io.ReadCloser, format string) {
+	if body == nil {
+		return
+	}
+	b, _ := ioutil.ReadAll(*body)
+	if len(b) > 0 {
+		c.log.Debugf(format, string(b))
+	}
+	*body = ioutil.NopCloser(bytes.NewBuffer(b))
+}
+
+func wrapSpecificError(r *http.Response, err ResponseError) error {
+	if err.Status == http.StatusTooManyRequests {
+		f, _ := strconv.ParseFloat(r.Header.Get("Retry-After"), 64)
+		return RateLimitError{
+			ResponseError: err,
+			RetryAfter:    int(f),
+		}
+	}
+
+	if err.Status == http.StatusNotAcceptable {
+		err.Message = http.StatusText(err.Status)
+	}
+
+	return err
+}
+
+// CreateAndDo performs a web request to WooCommerce with the given method (GET,
+// POST, PUT, DELETE) and relative path (e.g. "/wp-admin/v3").
+func (c *Client) CreateAndDo(method, relPath string, data, options, resource interface{}) error {
+	_, err := c.createAndDoGetHeaders(method, relPath, data, options, resource)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// createAndDoGetHeaders creates an executes a request while returning the response headers.
+func (c *Client) createAndDoGetHeaders(method, relPath string, data, options, resource interface{}) (http.Header, error) {
+	if strings.HasPrefix(relPath, "/") {
+		// make sure it's a relative path
+		relPath = strings.TrimLeft(relPath, "/")
+	}
+
+	relPath = path.Join(c.pathPrefix, relPath)
+	req, err := c.NewRequest(method, relPath, data, options)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.doGetHeaders(req, resource)
+}
+
+// Get performs a GET request for the given path and saves the result in the
+// given resource.
+func (c *Client) Get(path string, resource, options interface{}) error {
+	return c.CreateAndDo("GET", path, nil, options, resource)
+}
+
+// Post performs a POST request for the given path and saves the result in the
+// given resource.
+func (c *Client) Post(path string, data, resource interface{}) error {
+	return c.CreateAndDo("POST", path, data, nil, resource)
+}
+
+// Put performs a PUT request for the given path and saves the result in the
+// given resource.
+func (c *Client) Put(path string, data, resource interface{}) error {
+	return c.CreateAndDo("PUT", path, data, nil, resource)
+}
+
+// Delete performs a DELETE request for the given path
+func (c *Client) Delete(path string) error {
+	return c.CreateAndDo("DELETE", path, nil, nil, nil)
 }
