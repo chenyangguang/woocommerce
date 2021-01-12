@@ -1,4 +1,4 @@
-package gowooco
+package woocommerce
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	UserAgent            = "gowooco/1.0.0"
+	UserAgent            = "woocommerce/1.0.0"
 	defaultHttpTimeout   = 10
 	defaultApiPathPrefix = "/wp-json/wc/v3"
 	defaultVersion       = "v3"
@@ -203,7 +203,7 @@ func CheckResponseError(r *http.Response) error {
 	}
 
 	// Create an anonoymous struct to parse the JSON data into.
-	GoWooCoError := struct {
+	woocommerceError := struct {
 		Error  string      `json:"error"`
 		Errors interface{} `json:"errors"`
 	}{}
@@ -216,7 +216,7 @@ func CheckResponseError(r *http.Response) error {
 	// empty body, this probably means WooCommerce returned an error with no body
 	// we'll handle that error in wrapSpecificError()
 	if len(bodyBytes) > 0 {
-		err := json.Unmarshal(bodyBytes, &GoWooCoError)
+		err := json.Unmarshal(bodyBytes, &woocommerceError)
 		if err != nil {
 			return ResponseDecodingError{
 				Body:    bodyBytes,
@@ -229,29 +229,29 @@ func CheckResponseError(r *http.Response) error {
 	// Create the response error from the Shopify error.
 	responseError := ResponseError{
 		Status:  r.StatusCode,
-		Message: GoWooCoError.Error,
+		Message: woocommerceError.Error,
 	}
 
 	// If the errors field is not filled out, we can return here.
-	if GoWooCoError.Errors == nil {
+	if woocommerceError.Errors == nil {
 		return wrapSpecificError(r, responseError)
 	}
 
-	switch reflect.TypeOf(GoWooCoError.Errors).Kind() {
+	switch reflect.TypeOf(woocommerceError.Errors).Kind() {
 	case reflect.String:
 		// Single string, use as message
-		responseError.Message = GoWooCoError.Errors.(string)
+		responseError.Message = woocommerceError.Errors.(string)
 	case reflect.Slice:
 		// An array, parse each entry as a string and join them on the message
 		// json always serializes JSON arrays into []interface{}
-		for _, elem := range GoWooCoError.Errors.([]interface{}) {
+		for _, elem := range woocommerceError.Errors.([]interface{}) {
 			responseError.Data = append(responseError.Data, fmt.Sprint(elem))
 		}
 		responseError.Message = strings.Join(responseError.Data, ", ")
 	case reflect.Map:
 		// A map, parse each error for each key in the map.
 		// json always serializes into map[string]interface{} for objects
-		for k, v := range GoWooCoError.Errors.(map[string]interface{}) {
+		for k, v := range woocommerceError.Errors.(map[string]interface{}) {
 			// Check to make sure the interface is a slice
 			// json always serializes JSON arrays into []interface{}
 			if reflect.TypeOf(v).Kind() == reflect.Slice {

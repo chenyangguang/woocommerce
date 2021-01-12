@@ -1,4 +1,4 @@
-package gowooco
+package woocommerce
 
 // OrderRefundService allows you to create, view, and delete individual WooCommerce Order refunds.
 // https://woocommerce.github.io/woocommerce-rest-api-docs/#refunds

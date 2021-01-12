@@ -1,4 +1,4 @@
-package gowooco
+package woocommerce
 
 // OrderNoteService operate Woo-Commerce Order note, eg: create, view, and delete individual order notes.
 // https://woocommerce.github.io/woocommerce-rest-api-docs/#order-notes
