@@ -13,7 +13,7 @@ const (
 // OrderService is an interface for interfacing with the orders endpoints of woocommerce API
 // https://woocommerce.github.io/woocommerce-rest-api-docs/#orders
 type OrderService interface {
-	Create()
+	Create(order Order) (*Order, error)
 	Get(orderId int64, options interface{}) (*Order, error)
 	List(options interface{}) ([]Order, error)
 	Update()
@@ -84,8 +84,8 @@ type Order struct {
 	CustomerIpAddress  string          `json:"customer_ip_address,omitempty"`
 	CustomerUserAgent  string          `json:"customer_user_agent,omitempty"`
 	CustomerNote       string          `json:"customer_note,omitempty"`
-	Billing            *Address        `json:"billing,omitempty"`
-	Shipping           *Address        `json:"shipping,omitempty"`
+	Billing            *Billing        `json:"billing,omitempty"`
+	Shipping           *Shipping       `json:"shipping,omitempty"`
 	PaymentMethod      string          `json:"payment_method,omitempty"`
 	PaymentMethodTitle string          `json:"payment_method_title,omitempty"`
 	TransactionId      string          `json:"transaction_id,omitempty"`
@@ -104,7 +104,7 @@ type Order struct {
 	SetPaid            bool            `json:"set_paid,omitempty"`
 }
 
-type Address struct {
+type Billing struct {
 	FirstName string `json:"first_name,omitempty"`
 	LastName  string `json:"last_name,omitempty"`
 	Company   string `json:"company,omitempty"`
@@ -116,6 +116,19 @@ type Address struct {
 	Country   string `json:"country,omitempty"`
 	Email     string `json:"email,omitempty"`
 	Phone     string `json:"phone,omitempty"`
+}
+
+
+type Shipping struct {
+	FirstName string `json:"first_name,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
+	Company   string `json:"company,omitempty"`
+	Address1  string `json:"address1,omitempty"`
+	Address2  string `json:"address2,omitempty"`
+	City      string `json:"city,omitempty"`
+	State     string `json:"province,omitempty"`
+	PostCode  string `json:"postcode,omitempty"`
+	Country   string `json:"country,omitempty"`
 }
 
 type LineItem struct {
@@ -221,7 +234,13 @@ func (o *OrderServiceOp) ListWithPagination(options interface{}) ([]Order, *Pagi
 	return resource, nil, nil
 }
 
-func (o *OrderServiceOp) Create() {}
+func (o *OrderServiceOp) Create(order Order) (*Order, error){
+	path := fmt.Sprintf("%s", ordersBasePath)
+	resource := new(Order)
+
+	err := o.client.Post(path,order,&resource)
+	return resource, err
+}
 
 // Get individual order
 func (o *OrderServiceOp) Get(orderID int64, options interface{}) (*Order, error) {

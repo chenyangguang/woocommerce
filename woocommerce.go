@@ -128,7 +128,6 @@ func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, er
 	for {
 		c.attempts++
 		resp, err = c.Client.Do(req)
-
 		c.logResponse(resp)
 		if err != nil {
 			return nil, err //http client errors, not api responses
@@ -352,7 +351,7 @@ func (c *Client) createAndDoGetHeaders(method, relPath string, data, options, re
 	}
 
 	relPath = path.Join(c.pathPrefix, relPath)
-	//println("relPath:", relPath)
+	println("relPath:", relPath)
 	req, err := c.NewRequest(method, relPath, data, options)
 	if err != nil {
 		return nil, err
