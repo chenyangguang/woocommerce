@@ -6,8 +6,7 @@ import (
 )
 
 const (
-	ordersBasePath     = "orders"
-	OrdersBaseResource = "orders"
+	ordersBasePath = "orders"
 )
 
 // OrderService is an interface for interfacing with the orders endpoints of woocommerce API
@@ -16,9 +15,9 @@ type OrderService interface {
 	Create(order Order) (*Order, error)
 	Get(orderId int64, options interface{}) (*Order, error)
 	List(options interface{}) ([]Order, error)
-	Update()
-	Delete()
-	BatchUpdate()
+	Update(order *Order) (*Order, error)
+	Delete(orderID int64, options interface{}) (*Order, error)
+	Batch(option OrderBatchOption) (*OrderBatchResource, error)
 }
 
 // OrderServiceOp handles communication with the order related methods of WooCommerce'API
@@ -55,6 +54,29 @@ type OrderListOption struct {
 	Customer      int64    `url:"customer,omitempty"`
 	Product       int64    `url:"product,omitempty"`
 	Dp            int      `url:"id,omitempty"`
+}
+
+// OrderDeleteOption is the only option for delete order record. dangerous
+// when the force is true, it will permanently delete the order
+// while the force is false, you should get the order from Get Restful API
+// but the order's status became to be trash.
+// it is better to setting force's column value be "false" rather then  "true"
+type OrderDeleteOption struct {
+	Force bool `json:"force,omitempty"`
+}
+
+// OrderBatchOption setting  operate for order in batch way
+// https://woocommerce.github.io/woocommerce-rest-api-docs/#batch-update-orders
+type OrderBatchOption struct {
+	Create []Order `json:"create,omitempty"`
+	Update []Order `json:"update,omitempty"`
+	Delete []int64 `json:"delete,omitempty"`
+}
+
+type OrderBatchResource struct {
+	Create []*Order `json:"create,omitempty"`
+	Update []*Order `json:"update,omitempty"`
+	Delete []*Order `json:"delete,omitempty"`
 }
 
 // Order represents a WooCommerce Order
@@ -101,7 +123,18 @@ type Order struct {
 	FeeLines           []FeeLine       `json:"fee_lines,omitempty"`
 	CouponLines        []CouponLine    `json:"coupon_lines,omitempty"`
 	Refunds            []Refund        `json:"refunds,omitempty"`
+	CurrencySymbol     string          `json:"currency_symbol,omitempty"`
+	Links              Links           `json:"_links"`
 	SetPaid            bool            `json:"set_paid,omitempty"`
+}
+
+type Links struct {
+	Self []struct {
+		Href string `json:"href"`
+	} `json:"self"`
+	Collection []struct {
+		Href string `json:"href"`
+	} `json:"collection"`
 }
 
 type Billing struct {
@@ -117,7 +150,6 @@ type Billing struct {
 	Email     string `json:"email,omitempty"`
 	Phone     string `json:"phone,omitempty"`
 }
-
 
 type Shipping struct {
 	FirstName string `json:"first_name,omitempty"`
@@ -201,12 +233,6 @@ type CouponLine struct {
 }
 
 func (o *OrderServiceOp) List(options interface{}) ([]Order, error) {
-	//path := fmt.Sprintf("%s", ordersBasePath)
-	//println(path)
-	//resource := make([]*Order, 0)
-	//err := o.client.Get(path, resource, options)
-	//return resource, err
-
 	orders, _, err := o.ListWithPagination(options)
 	if err != nil {
 		return nil, err
@@ -234,24 +260,39 @@ func (o *OrderServiceOp) ListWithPagination(options interface{}) ([]Order, *Pagi
 	return resource, nil, nil
 }
 
-func (o *OrderServiceOp) Create(order Order) (*Order, error){
+func (o *OrderServiceOp) Create(order Order) (*Order, error) {
 	path := fmt.Sprintf("%s", ordersBasePath)
 	resource := new(Order)
 
-	err := o.client.Post(path,order,&resource)
+	err := o.client.Post(path, order, &resource)
 	return resource, err
 }
 
 // Get individual order
 func (o *OrderServiceOp) Get(orderID int64, options interface{}) (*Order, error) {
 	path := fmt.Sprintf("%s/%d", ordersBasePath, orderID)
-	println(path)
 	resource := new(Order)
 	err := o.client.Get(path, resource, options)
 	return resource, err
 }
 
-func (o *OrderServiceOp) Update() {}
+func (o *OrderServiceOp) Update(order *Order) (*Order, error) {
+	path := fmt.Sprintf("%s/%d", ordersBasePath, order.ID)
+	resource := new(Order)
+	err := o.client.Put(path, order, &resource)
+	return resource, err
+}
 
-func (o *OrderServiceOp) Delete()      {}
-func (o *OrderServiceOp) BatchUpdate() {}
+func (o *OrderServiceOp) Delete(orderID int64, options interface{}) (*Order, error) {
+	path := fmt.Sprintf("%s/%d", ordersBasePath, orderID)
+	resource := new(Order)
+	err := o.client.Delete(path, options, &resource)
+	return resource, err
+}
+
+func (o *OrderServiceOp) Batch(data OrderBatchOption) (*OrderBatchResource, error) {
+	path := fmt.Sprintf("%s/batch", ordersBasePath)
+	resource := new(OrderBatchResource)
+	err := o.client.Post(path, data, &resource)
+	return resource, err
+}

@@ -3,15 +3,18 @@ package woocommerce
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 const (
-	customerKey    = "ck_424894d48a21577fa4b0f57394a64ae0db8e7321" // your customer_key
-	customerSecret = "cs_6156c6a1e84f8337e9bad5a784d47a1a90dc7e4e" // your customer_secret
-	shopUrl        = "testwcorder.salinshop.com"
+	customerKey    = "ck_f1ae5de6c37848c143ad21502541f540f8cda2bb" // your customer_key
+	customerSecret = "cs_a55c3217e72b13cbffca4f55e66e387b1d5acd63" // your customer_secret
+	shopUrl        = "your shopUrl website domain"
 )
-var client  *Client
-func init () {
+
+var client *Client
+
+func init() {
 	app := App{
 		CustomerKey:    customerKey,
 		CustomerSecret: customerSecret,
@@ -19,44 +22,132 @@ func init () {
 
 	client = NewClient(app, shopUrl,
 		WithLog(&LeveledLogger{
-			Level: LevelDebug,
+			Level: LevelDebug, // you should open this for debug in dev environment,  usefully.
 		}),
 		WithRetry(3))
 }
 func TestOrderServiceOp_List(t *testing.T) {
-
-	orders, _ := client.Order.List(nil)
+	options := OrderListOption{
+		ListOptions: ListOptions{
+			Context: "view",
+			After:   "2021-01-01T06:16:17",
+			Before:  "2022-01-12T06:16:17",
+			Order:   "desc",
+			Orderby: "date",
+			Page:    2,
+			PerPage: 2,
+		},
+		Status:  []string{"processing"},
+		Product: 10,
+	}
+	orders, _ := client.Order.List(options)
 	for _, order := range orders {
-		println(order.ID)
-		fmt.Println(order.ID, order.Currency)
-		t.Log(order.ID,order)
+		t.Log(order.ID, order.Currency)
 	}
 }
 
 func TestOrderServiceOp_Get(t *testing.T) {
 	order, err := client.Order.Get(17, nil)
 	t.Logf("order : %v, err: %v", order, err)
-	fmt.Println(order, err)
 }
 
-func TestOrderServiceOp_Create(t *testing.T) {
+func initOrder() Order {
+	timeNow := time.Now().Unix()
+	timeNowStr := fmt.Sprintf("%d", timeNow)
 	order := Order{
-		PaymentMethod:  "paypal",
+		PaymentMethod: "paypal",
 		Billing: &Billing{
-			FirstName: "git",
-			LastName: "vim",
+			FirstName: "git" + timeNowStr,
+			LastName:  "vim" + timeNowStr,
 		},
 		LineItems: []LineItem{{
-			ProductID: 93,
-			Quantity: 2,
+			Name:      "北京烤鸭" + timeNowStr,
+			ProductID: 10,
+			SubTotal:  "56.00",
+			Total:     "56.00",
+			Quantity:  2,
+			MetaData: []MetaData{
+				{
+					Key:   "_reduced_stock",
+					Value: "2",
+				},
+			},
+			SKU:   "wutongshan_001" + timeNowStr,
+			Price: 56,
 		},
 		},
 	}
+	return order
+}
+
+func TestOrderServiceOp_Create(t *testing.T) {
+	order := initOrder()
 	res, err := client.Order.Create(order)
-	fmt.Println(res, err)
 	if err != nil {
 		t.Errorf("res : %v, err: %v", res, err)
 	} else {
 		t.Logf("res:%v", res)
+	}
+}
+
+func TestOrderServiceOp_Update(t *testing.T) {
+	order, err := client.Order.Get(17, nil)
+	if order == nil || err != nil {
+		t.Errorf("get order fail : %v", err)
+	}
+	order.Currency = "CNY"
+	res, err := client.Order.Update(order)
+	if err != nil {
+		t.Errorf("update order fail: %v", err)
+	}
+	t.Logf("update success result is : %v", res)
+}
+
+func TestOrderServiceOp_Delete(t *testing.T) {
+	optionsDel := OrderDeleteOption{
+		Force: false,
+	}
+	res, err := client.Order.Delete(29, optionsDel)
+	if err != nil {
+		t.Errorf("delete order fail: %v", err)
+		t.FailNow()
+	}
+	t.Logf("delete order result : %v", res)
+	// go test -v -run=TestOrderServiceOp_Delete
+}
+
+func TestOrderServiceOp_Batch(t *testing.T) {
+	order := initOrder()
+	data := OrderBatchOption{
+		Create: []Order{
+			order,
+		},
+		Update: []Order{
+			{
+				ID:       17,
+				TotalTax: "20.00",
+				Total:    "120",
+			},
+		},
+		Delete: []int64{
+			18,
+		},
+	}
+	res, err := client.Order.Batch(data)
+	if err != nil {
+		t.Errorf("delete order fail: %v", err)
+		t.FailNow()
+	}
+	t.Logf(" create : %v, update: %v, delete : %v", res.Create, res.Update, res.Delete)
+	for _, order := range res.Create {
+		t.Logf(" order id: %v, order total : %v", order.ID, order.Total)
+	}
+
+	for _, order := range res.Update {
+		t.Logf(" order id: %v, order total : %v", order.ID, order.Total)
+	}
+
+	for _, order := range res.Delete {
+		t.Logf(" order id: %v, order status : %v", order.ID, order.Status)
 	}
 }

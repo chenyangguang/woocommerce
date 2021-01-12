@@ -135,7 +135,7 @@ func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, er
 
 		respErr := CheckResponseError(resp)
 		if respErr == nil {
-			println("break", respErr)
+			//println("break", respErr)
 			break // no errors, break out of the retry loop
 		}
 
@@ -351,7 +351,7 @@ func (c *Client) createAndDoGetHeaders(method, relPath string, data, options, re
 	}
 
 	relPath = path.Join(c.pathPrefix, relPath)
-	println("relPath:", relPath)
+	//println("relPath:", relPath)
 	req, err := c.NewRequest(method, relPath, data, options)
 	if err != nil {
 		return nil, err
@@ -428,8 +428,8 @@ func (c *Client) Put(path string, data, resource interface{}) error {
 }
 
 // Delete performs a DELETE request for the given path
-func (c *Client) Delete(path string) error {
-	return c.CreateAndDo("DELETE", path, nil, nil, nil)
+func (c *Client) Delete(path string, options, resource interface{}) error {
+	return c.CreateAndDo("DELETE", path, nil, options, resource)
 }
 
 //  ListOptions represent ist options that can be used for most collections of entities.
