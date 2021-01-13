@@ -9,7 +9,7 @@ import (
 const (
 	customerKey    = "ck_f1ae5de6c37848c143ad21502541f540f8cda2bb" // your customer_key
 	customerSecret = "cs_a55c3217e72b13cbffca4f55e66e387b1d5acd63" // your customer_secret
-	shopUrl        = "your shopUrl website domain"
+	shopUrl        = "shop.gitvim.com"                             // your website domain
 )
 
 var client *Client
@@ -104,7 +104,7 @@ func TestOrderServiceOp_Update(t *testing.T) {
 }
 
 func TestOrderServiceOp_Delete(t *testing.T) {
-	optionsDel := OrderDeleteOption{
+	optionsDel := DeleteOption{
 		Force: false,
 	}
 	res, err := client.Order.Delete(29, optionsDel)

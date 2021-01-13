@@ -48,21 +48,12 @@ type OrderServiceOp struct {
 // dp	integer	Number of decimal points to use in each resource. Default is 2.
 type OrderListOption struct {
 	ListOptions
-	Parent        []int64  `url:"parent,omitemty"`
-	ParentExclude []int64  `url:"parent_exclude,omitemty"`
+	Parent        []int64  `url:"parent,omitempty"`
+	ParentExclude []int64  `url:"parent_exclude,omitempty"`
 	Status        []string `url:"status,omitempty"`
 	Customer      int64    `url:"customer,omitempty"`
 	Product       int64    `url:"product,omitempty"`
 	Dp            int      `url:"id,omitempty"`
-}
-
-// OrderDeleteOption is the only option for delete order record. dangerous
-// when the force is true, it will permanently delete the order
-// while the force is false, you should get the order from Get Restful API
-// but the order's status became to be trash.
-// it is better to setting force's column value be "false" rather then  "true"
-type OrderDeleteOption struct {
-	Force bool `json:"force,omitempty"`
 }
 
 // OrderBatchOption setting  operate for order in batch way
@@ -73,6 +64,7 @@ type OrderBatchOption struct {
 	Delete []int64 `json:"delete,omitempty"`
 }
 
+// OrderBatchResource conservation the response struct for OrderBatchOption request
 type OrderBatchResource struct {
 	Create []*Order `json:"create,omitempty"`
 	Update []*Order `json:"update,omitempty"`

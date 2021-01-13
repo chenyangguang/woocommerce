@@ -62,6 +62,7 @@ type Client struct {
 	Product    ProductService
 	Order      OrderService
 	OrderNote  OrderNoteService
+	Webhook    WebhookService
 }
 
 // NewClient returns a new WooCommerce API client with an already authenticated shopname and
@@ -93,6 +94,7 @@ func NewClient(app App, shopName string, opts ...Option) *Client {
 	c.Product = &ProductServiceOp{client: c}
 	c.Order = &OrderServiceOp{client: c}
 	c.OrderNote = &OrderNoteServiceOp{client: c}
+	c.Webhook = &WebhookServiceOp{client: c}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -128,6 +130,7 @@ func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, er
 	for {
 		c.attempts++
 		resp, err = c.Client.Do(req)
+
 		c.logResponse(resp)
 		if err != nil {
 			return nil, err //http client errors, not api responses
@@ -434,25 +437,24 @@ func (c *Client) Delete(path string, options, resource interface{}) error {
 
 //  ListOptions represent ist options that can be used for most collections of entities.
 type ListOptions struct {
-	Context string  `url:"context,omitemty"`
-	Page    int     `url:"page,omitemty"`
-	PerPage int     `url:"per_page,omitemty"`
-	Search  string  `url:"search,omitemty"`
-	After   string  `url:"after,omitemty"`
-	Before  string  `url:"before,omitemty"`
-	Exclude []int64 `url:"exclude,omitemty"`
-	Include []int64 `url:"include,omitemty"`
-	Offset  int     `url:"offset,omitemty"`
-	Order   string  `url:"order,omitemty"`
-	Orderby string  `url:"orderby,omitemty"`
+	Context string  `url:"context,omitempty"`
+	Page    int     `url:"page,omitempty"`
+	PerPage int     `url:"per_page,omitempty"`
+	Search  string  `url:"search,omitempty"`
+	After   string  `url:"after,omitempty"`
+	Before  string  `url:"before,omitempty"`
+	Exclude []int64 `url:"exclude,omitempty"`
+	Include []int64 `url:"include,omitempty"`
+	Offset  int     `url:"offset,omitempty"`
+	Order   string  `url:"order,omitempty"`
+	Orderby string  `url:"orderby,omitempty"`
 }
 
-// OrderResource  represents the result from the /wp-json/wc/v3/orders/:id endpoint
-type OrderResource struct {
-	Order *Order `json:"order"`
-}
-
-// OrderResource  represents the result from the /wp-json/wc/v3/orders endpoint
-type OrdersResource struct {
-	Orders []Order `json:"orders"`
+// DeleteOption is the only option for delete order record. dangerous
+// when the force is true, it will permanently delete the resource
+// while the force is false, you should get the order from Get Restful API
+// but the order's status became to be trash.
+// it is better to setting force's column value be "false" rather then  "true"
+type DeleteOption struct {
+	Force bool `json:"force,omitempty"`
 }
