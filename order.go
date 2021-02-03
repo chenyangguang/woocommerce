@@ -136,7 +136,7 @@ type Billing struct {
 	Address1  string `json:"address1,omitempty"`
 	Address2  string `json:"address2,omitempty"`
 	City      string `json:"city,omitempty"`
-	State     string `json:"province,omitempty"`
+	State     string `json:"state,omitempty"`
 	PostCode  string `json:"postcode,omitempty"`
 	Country   string `json:"country,omitempty"`
 	Email     string `json:"email,omitempty"`
@@ -150,7 +150,7 @@ type Shipping struct {
 	Address1  string `json:"address1,omitempty"`
 	Address2  string `json:"address2,omitempty"`
 	City      string `json:"city,omitempty"`
-	State     string `json:"province,omitempty"`
+	State     string `json:"state,omitempty"`
 	PostCode  string `json:"postcode,omitempty"`
 	Country   string `json:"country,omitempty"`
 }
