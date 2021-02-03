@@ -9,10 +9,10 @@ const (
 // OrderNoteService operate Woo-Commerce Order note, eg: create, view, and delete individual order notes.
 // https://woocommerce.github.io/woocommerce-rest-api-docs/#order-notes
 type OrderNoteService interface {
-	Create(text string) (*OrderNote, error)
+	Create(orderId int64, text string) (*OrderNote, error)
 	Get(orderId int64, noteId int64) (*OrderNote, error)
-	List(orderId int64, options interface{})
-	Delete()
+	List(orderId int64, options interface{}) (*[]OrderNote, error)
+	Delete(orderId int64, noteId int64, options interface{}) (*OrderNote, error)
 }
 
 // OrderNote represent a WooCommerce Order note
@@ -50,9 +50,9 @@ func (n *OrderNoteServiceOp) Get(orderId int64, noteId int64) (*OrderNote, error
 	return resource, err
 }
 
-func (n *OrderNoteServiceOp) List(orderId int64, optoions interface{}) ([]Order, error) {
+func (n *OrderNoteServiceOp) List(orderId int64, options interface{}) (*[]OrderNote, error) {
 	path := fmt.Sprintf("%s/%d/notes", orderNoteBasePath, orderId)
-	resource := new(OrderNote)
+	resource := new([]OrderNote)
 
 	err := n.client.Get(path, resource, options)
 	return resource, err

@@ -73,7 +73,7 @@ func initOrder() Order {
 				},
 			},
 			SKU:   "wutongshan_001" + timeNowStr,
-			Price: 56,
+			Price: "56.00",
 		},
 		},
 	}
