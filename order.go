@@ -169,7 +169,7 @@ type LineItem struct {
 	Taxes       []TaxLine  `json:"taxes,omitempty"`
 	MetaData    []MetaData `json:"meta_data,omitempty"`
 	SKU         string     `json:"sku,omitempty"`
-	Price       int64      `json:"price,omitempty"`
+	Price       string     `json:"price,omitempty"`
 }
 
 type TaxLine struct {
