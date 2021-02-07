@@ -184,9 +184,9 @@ type TaxLine struct {
 }
 
 type MetaData struct {
-	ID    int64  `json:"id,omitempty"`
-	Key   string `json:"key,omitempty"`
-	Value string `json:"value,omitempty"`
+	ID    int64       `json:"id,omitempty"`
+	Key   string      `json:"key,omitempty"`
+	Value interface{} `json:"value,omitempty"`
 }
 
 type FeeLine struct {
