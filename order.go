@@ -249,7 +249,7 @@ func (o *OrderServiceOp) ListWithPagination(options interface{}) ([]Order, *Pagi
 	//	return nil, nil, err
 	//}
 
-	return resource, nil, nil
+	return resource, nil, err
 }
 
 func (o *OrderServiceOp) Create(order Order) (*Order, error) {
