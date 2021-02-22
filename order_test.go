@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	customerKey    = "ck_f1ae5de6c37848c143ad21502541f540f8cda2bb" // your customer_key
-	customerSecret = "cs_a55c3217e72b13cbffca4f55e66e387b1d5acd63" // your customer_secret
-	shopUrl        = "shop.gitvim.com"                             // your website domain
+	customerKey    = "customer_key"    // your customer_key
+	customerSecret = "customer_secret" // your customer_secret
+	shopUrl        = "shop.gitvim.com" // your shop website domain
 )
 
 var client *Client
@@ -40,7 +40,10 @@ func TestOrderServiceOp_List(t *testing.T) {
 		Status:  []string{"processing"},
 		Product: 10,
 	}
-	orders, _ := client.Order.List(options)
+	orders, err := client.Order.List(options)
+	if err != nil {
+		fmt.Println("err result: ", err)
+	}
 	for _, order := range orders {
 		t.Log(order.ID, order.Currency)
 	}
@@ -60,21 +63,22 @@ func initOrder() Order {
 			FirstName: "git" + timeNowStr,
 			LastName:  "vim" + timeNowStr,
 		},
-		LineItems: []LineItem{{
-			Name:      "北京烤鸭" + timeNowStr,
-			ProductID: 10,
-			SubTotal:  "56.00",
-			Total:     "56.00",
-			Quantity:  2,
-			MetaData: []MetaData{
-				{
-					Key:   "_reduced_stock",
-					Value: "2",
+		LineItems: []LineItem{
+			{
+				Name:      "北京烤鸭" + timeNowStr,
+				ProductID: 10,
+				SubTotal:  "56.00",
+				Total:     "56.00",
+				Quantity:  2,
+				MetaData: []MetaData{
+					{
+						Key:   "_reduced_stock",
+						Value: "2",
+					},
 				},
+				SKU:   "wutongshan_001" + timeNowStr,
+				Price: 56.00,
 			},
-			SKU:   "wutongshan_001" + timeNowStr,
-			Price: "56.00",
-		},
 		},
 	}
 	return order

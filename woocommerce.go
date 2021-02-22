@@ -4,17 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/google/go-querystring/query"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/go-querystring/query"
 )
 
 const (
@@ -138,7 +138,6 @@ func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, er
 
 		respErr := CheckResponseError(resp)
 		if respErr == nil {
-			//println("break", respErr)
 			break // no errors, break out of the retry loop
 		}
 
@@ -169,6 +168,7 @@ func (c *Client) doGetHeaders(req *http.Request, v interface{}) (http.Header, er
 			continue
 		}
 
+		//fmt.Println(respErr, "err result", resp)
 		// no retry attempts, just return the err
 		return nil, respErr
 	}
@@ -206,8 +206,9 @@ func CheckResponseError(r *http.Response) error {
 
 	// Create an anonoymous struct to parse the JSON data into.
 	woocommerceError := struct {
-		Error  string      `json:"error"`
-		Errors interface{} `json:"errors"`
+		Code    string      `json:"code"`
+		Message string      `json:"message"`
+		Data    interface{} `json:"data"`
 	}{}
 
 	bodyBytes, err := ioutil.ReadAll(r.Body)
@@ -225,50 +226,55 @@ func CheckResponseError(r *http.Response) error {
 				Message: err.Error(),
 				Status:  r.StatusCode,
 			}
-		}
-	}
-
-	// Create the response error from the Shopify error.
-	responseError := ResponseError{
-		Status:  r.StatusCode,
-		Message: woocommerceError.Error,
-	}
-
-	// If the errors field is not filled out, we can return here.
-	if woocommerceError.Errors == nil {
-		return wrapSpecificError(r, responseError)
-	}
-
-	switch reflect.TypeOf(woocommerceError.Errors).Kind() {
-	case reflect.String:
-		// Single string, use as message
-		responseError.Message = woocommerceError.Errors.(string)
-	case reflect.Slice:
-		// An array, parse each entry as a string and join them on the message
-		// json always serializes JSON arrays into []interface{}
-		for _, elem := range woocommerceError.Errors.([]interface{}) {
-			responseError.Data = append(responseError.Data, fmt.Sprint(elem))
-		}
-		responseError.Message = strings.Join(responseError.Data, ", ")
-	case reflect.Map:
-		// A map, parse each error for each key in the map.
-		// json always serializes into map[string]interface{} for objects
-		for k, v := range woocommerceError.Errors.(map[string]interface{}) {
-			// Check to make sure the interface is a slice
-			// json always serializes JSON arrays into []interface{}
-			if reflect.TypeOf(v).Kind() == reflect.Slice {
-				for _, elem := range v.([]interface{}) {
-					// If the primary message of the response error is not set, use
-					// any message.
-					if responseError.Message == "" {
-						responseError.Message = fmt.Sprintf("%v: %v", k, elem)
-					}
-					topicAndElem := fmt.Sprintf("%v: %v", k, elem)
-					responseError.Data = append(responseError.Data, topicAndElem)
-				}
+		} else {
+			return ResponseError{
+				Status:  r.StatusCode,
+				Message: woocommerceError.Message,
 			}
 		}
 	}
+
+	// Create the response error from the WooCommerce error.
+	responseError := ResponseError{
+		Status:  r.StatusCode,
+		Message: woocommerceError.Message,
+	}
+
+	// If the errors field is not filled out, we can return here.
+	if woocommerceError.Message == "" {
+		return wrapSpecificError(r, responseError)
+	}
+
+	// 	switch reflect.TypeOf(woocommerceError.Errors).Kind() {
+	// 	case reflect.String:
+	// 		// Single string, use as message
+	// 		responseError.Message = woocommerceError.Errors.(string)
+	// 	case reflect.Slice:
+	// 		// An array, parse each entry as a string and join them on the message
+	// 		// json always serializes JSON arrays into []interface{}
+	// 		for _, elem := range woocommerceError.Errors.([]interface{}) {
+	// 			responseError.Data = append(responseError.Data, fmt.Sprint(elem))
+	// 		}
+	// 		responseError.Message = strings.Join(responseError.Data, ", ")
+	// 	case reflect.Map:
+	// 		// A map, parse each error for each key in the map.
+	// 		// json always serializes into map[string]interface{} for objects
+	// 		for k, v := range woocommerceError.Errors.(map[string]interface{}) {
+	// 			// Check to make sure the interface is a slice
+	// 			// json always serializes JSON arrays into []interface{}
+	// 			if reflect.TypeOf(v).Kind() == reflect.Slice {
+	// 				for _, elem := range v.([]interface{}) {
+	// 					// If the primary message of the response error is not set, use
+	// 					// any message.
+	// 					if responseError.Message == "" {
+	// 						responseError.Message = fmt.Sprintf("%v: %v", k, elem)
+	// 					}
+	// 					topicAndElem := fmt.Sprintf("%v: %v", k, elem)
+	// 					responseError.Data = append(responseError.Data, topicAndElem)
+	// 				}
+	// 			}
+	// 		}
+	// 	}
 
 	return wrapSpecificError(r, responseError)
 }

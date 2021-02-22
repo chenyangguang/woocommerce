@@ -226,10 +226,7 @@ type CouponLine struct {
 
 func (o *OrderServiceOp) List(options interface{}) ([]Order, error) {
 	orders, _, err := o.ListWithPagination(options)
-	if err != nil {
-		return nil, err
-	}
-	return orders, nil
+	return orders, err
 }
 
 // ListWithPagination lists products and return pagination to retrieve next/previous results.
@@ -243,11 +240,11 @@ func (o *OrderServiceOp) ListWithPagination(options interface{}) ([]Order, *Pagi
 	}
 	// Extract pagination info from header
 	linkHeader := headers.Get("Link")
-	println(linkHeader)
-	//pagination, err := extractPagination(linkHeader)
-	//if err != nil {
-	//	return nil, nil, err
-	//}
+	fmt.Println(linkHeader)
+	// pagination, err := extractPagination(linkHeader)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 
 	return resource, nil, err
 }
