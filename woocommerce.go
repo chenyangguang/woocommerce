@@ -58,11 +58,12 @@ type Client struct {
 	retries  int
 	attempts int
 
-	RateLimits RateLimitInfo
-	Product    ProductService
-	Order      OrderService
-	OrderNote  OrderNoteService
-	Webhook    WebhookService
+	RateLimits     RateLimitInfo
+	Product        ProductService
+	Order          OrderService
+	OrderNote      OrderNoteService
+	Webhook        WebhookService
+	PaymentGateway PaymentGatewayService
 }
 
 // NewClient returns a new WooCommerce API client with an already authenticated shopname and
@@ -95,6 +96,7 @@ func NewClient(app App, shopName string, opts ...Option) *Client {
 	c.Order = &OrderServiceOp{client: c}
 	c.OrderNote = &OrderNoteServiceOp{client: c}
 	c.Webhook = &WebhookServiceOp{client: c}
+	c.PaymentGateway = &PaymentGatewayServiceOp{client: c}
 	for _, opt := range opts {
 		opt(c)
 	}
