@@ -133,8 +133,8 @@ type Billing struct {
 	FirstName string `json:"first_name,omitempty"`
 	LastName  string `json:"last_name,omitempty"`
 	Company   string `json:"company,omitempty"`
-	Address1  string `json:"address1,omitempty"`
-	Address2  string `json:"address2,omitempty"`
+	Address1  string `json:"address_1,omitempty"`
+	Address2  string `json:"address_2,omitempty"`
 	City      string `json:"city,omitempty"`
 	State     string `json:"state,omitempty"`
 	PostCode  string `json:"postcode,omitempty"`
@@ -147,8 +147,8 @@ type Shipping struct {
 	FirstName string `json:"first_name,omitempty"`
 	LastName  string `json:"last_name,omitempty"`
 	Company   string `json:"company,omitempty"`
-	Address1  string `json:"address1,omitempty"`
-	Address2  string `json:"address2,omitempty"`
+	Address1  string `json:"address_1,omitempty"`
+	Address2  string `json:"address_2,omitempty"`
 	City      string `json:"city,omitempty"`
 	State     string `json:"state,omitempty"`
 	PostCode  string `json:"postcode,omitempty"`
