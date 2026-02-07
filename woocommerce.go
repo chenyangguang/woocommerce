@@ -58,12 +58,21 @@ type Client struct {
 	retries  int
 	attempts int
 
-	RateLimits     RateLimitInfo
-	Product        ProductService
-	Order          OrderService
-	OrderNote      OrderNoteService
-	Webhook        WebhookService
-	PaymentGateway PaymentGatewayService
+	RateLimits           RateLimitInfo
+	Product              ProductService
+	Order                OrderService
+	OrderNote            OrderNoteService
+	Webhook              WebhookService
+	PaymentGateway       PaymentGatewayService
+	Customer             CustomerService
+	Coupon               CouponService
+	OrderRefund          OrderRefundService
+	ProductVariation     ProductVariationService
+	ProductAttribute     ProductAttributeService
+	ProductCategory      ProductCategoryService
+	ProductTag           ProductTagService
+	ProductShippingClass ProductShippingClassService
+	ProductReview        ProductReviewService
 }
 
 // NewClient returns a new WooCommerce API client with an already authenticated shopname and
@@ -97,6 +106,15 @@ func NewClient(app App, shopName string, opts ...Option) *Client {
 	c.OrderNote = &OrderNoteServiceOp{client: c}
 	c.Webhook = &WebhookServiceOp{client: c}
 	c.PaymentGateway = &PaymentGatewayServiceOp{client: c}
+	c.Customer = &CustomerServiceOp{client: c}
+	c.Coupon = &CouponServiceOp{client: c}
+	c.OrderRefund = &OrderRefundServiceOp{client: c}
+	c.ProductVariation = &ProductVariationServiceOp{client: c}
+	c.ProductAttribute = &ProductAttributeServiceOp{client: c}
+	c.ProductCategory = &ProductCategoryServiceOp{client: c}
+	c.ProductTag = &ProductTagServiceOp{client: c}
+	c.ProductShippingClass = &ProductShippingClassServiceOp{client: c}
+	c.ProductReview = &ProductReviewServiceOp{client: c}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -443,7 +461,7 @@ func (c *Client) Delete(path string, options, resource interface{}) error {
 	return c.CreateAndDo("DELETE", path, nil, options, resource)
 }
 
-//  ListOptions represent ist options that can be used for most collections of entities.
+// ListOptions represent ist options that can be used for most collections of entities.
 type ListOptions struct {
 	Context string  `url:"context,omitempty"`
 	Page    int     `url:"page,omitempty"`
