@@ -2,10 +2,11 @@ package woocommerce
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -213,10 +214,24 @@ type ResponseDecodingError struct {
 	Body    []byte
 	Message string
 	Status  int
+	Err     error
 }
 
 func (e ResponseDecodingError) Error() string {
 	return e.Message
+}
+
+func (e ResponseDecodingError) Unwrap() error {
+	return e.Err
+}
+
+// Is checks if target is a ResponseDecodingError
+func (e ResponseDecodingError) Is(target error) bool {
+	var t *ResponseDecodingError
+	if errors.As(target, &t) {
+		return e.Status == t.Status
+	}
+	return false
 }
 
 func CheckResponseError(r *http.Response) error {
@@ -231,7 +246,7 @@ func CheckResponseError(r *http.Response) error {
 		Data    interface{} `json:"data"`
 	}{}
 
-	bodyBytes, err := ioutil.ReadAll(r.Body)
+	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
@@ -321,11 +336,11 @@ func (c *Client) logBody(body *io.ReadCloser, format string) {
 	if body == nil {
 		return
 	}
-	b, _ := ioutil.ReadAll(*body)
+	b, _ := io.ReadAll(*body)
 	if len(b) > 0 {
 		c.log.Debugf(format, string(b))
 	}
-	*body = ioutil.NopCloser(bytes.NewBuffer(b))
+	*body = io.NopCloser(bytes.NewBuffer(b))
 }
 
 // ResponseError is A general response error that follows a similar layout to WooCommerce's response
@@ -339,6 +354,15 @@ type ResponseError struct {
 
 func (e ResponseError) Error() string {
 	return e.Message
+}
+
+// Is checks if target is a ResponseError with the same status
+func (e ResponseError) Is(target error) bool {
+	var t *ResponseError
+	if errors.As(target, &t) {
+		return e.Status == t.Status
+	}
+	return false
 }
 
 // An error specific to a rate-limiting response. Embeds the ResponseError to
@@ -459,6 +483,95 @@ func (c *Client) Put(path string, data, resource interface{}) error {
 // Delete performs a DELETE request for the given path
 func (c *Client) Delete(path string, options, resource interface{}) error {
 	return c.CreateAndDo("DELETE", path, nil, options, resource)
+}
+
+// === Context-aware methods ===
+
+// CreateAndDoWithContext performs a web request with context.
+func (c *Client) CreateAndDoWithContext(ctx context.Context, method, relPath string, data, options, resource interface{}) error {
+	_, err := c.createAndDoGetHeadersWithContext(ctx, method, relPath, data, options, resource)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// createAndDoGetHeadersWithContext creates and executes a request with context.
+func (c *Client) createAndDoGetHeadersWithContext(ctx context.Context, method, relPath string, data, options, resource interface{}) (http.Header, error) {
+	if strings.HasPrefix(relPath, "/") {
+		relPath = strings.TrimLeft(relPath, "/")
+	}
+
+	relPath = path.Join(c.pathPrefix, relPath)
+	req, err := c.NewRequestWithContext(ctx, method, relPath, data, options)
+	if err != nil {
+		return nil, err
+	}
+	return c.doGetHeaders(req, resource)
+}
+
+// NewRequestWithContext creates an API request with context.
+func (c *Client) NewRequestWithContext(ctx context.Context, method, relPath string, body, options interface{}) (*http.Request, error) {
+	rel, err := url.Parse(relPath)
+	if err != nil {
+		return nil, err
+	}
+
+	u := c.baseURL.ResolveReference(rel)
+
+	if options != nil {
+		optionsQuery, err := query.Values(options)
+		if err != nil {
+			return nil, err
+		}
+
+		for k, values := range u.Query() {
+			for _, v := range values {
+				optionsQuery.Add(k, v)
+			}
+		}
+		u.RawQuery = optionsQuery.Encode()
+	}
+
+	var js []byte
+
+	if body != nil {
+		js, err = json.Marshal(body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewBuffer(js))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("User-Agent", UserAgent)
+	req.SetBasicAuth(c.app.CustomerKey, c.app.CustomerSecret)
+	return req, nil
+}
+
+// GetWithContext performs a GET request with context.
+func (c *Client) GetWithContext(ctx context.Context, path string, resource, options interface{}) error {
+	return c.CreateAndDoWithContext(ctx, "GET", path, nil, options, resource)
+}
+
+// PostWithContext performs a POST request with context.
+func (c *Client) PostWithContext(ctx context.Context, path string, data, resource interface{}) error {
+	return c.CreateAndDoWithContext(ctx, "POST", path, data, nil, resource)
+}
+
+// PutWithContext performs a PUT request with context.
+func (c *Client) PutWithContext(ctx context.Context, path string, data, resource interface{}) error {
+	return c.CreateAndDoWithContext(ctx, "PUT", path, data, nil, resource)
+}
+
+// DeleteWithContext performs a DELETE request with context.
+func (c *Client) DeleteWithContext(ctx context.Context, path string, options, resource interface{}) error {
+	return c.CreateAndDoWithContext(ctx, "DELETE", path, nil, options, resource)
 }
 
 // ListOptions represent ist options that can be used for most collections of entities.
