@@ -3,4 +3,5 @@
 vendor
 .sisyphus/
 *.local.md
+.worktrees/
 
